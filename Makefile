@@ -1,3 +1,8 @@
+-include .env
+export
+
+PY ?= .venv/bin/python
+
 .PHONY: up down seed simulate load test rebuild perf
 
 up:
@@ -7,5 +12,11 @@ up:
 down:
 	docker compose down
 
-seed simulate load test rebuild perf:
+seed:
+	$(PY) src/generate_reference.py
+
+test:
+	$(PY) -m pytest -q
+
+simulate load rebuild perf:
 	@echo "$@: not implemented yet"
