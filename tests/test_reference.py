@@ -1,4 +1,5 @@
 import yaml
+
 from generate_reference import ROOT, build_reference, checksum
 
 CFG = yaml.safe_load((ROOT / "config.yml").read_text())

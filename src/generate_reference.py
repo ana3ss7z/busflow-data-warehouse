@@ -4,7 +4,7 @@ import json
 import math
 import os
 import random
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 
 import psycopg
@@ -12,7 +12,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHOOL = (33.8935, -5.5473)  # synthetic school location, Meknès centre
-BASE_TS = datetime(2025, 8, 1, 8, 0, tzinfo=timezone.utc)  # fixed: output never depends on the clock
+BASE_TS = datetime(2025, 8, 1, 8, 0, tzinfo=UTC)  # fixed: output never depends on the clock
 
 NEIGHBORHOODS = [
     "Hamria", "Marjane", "Wislane", "Sidi Baba", "Toulal", "Zitoune",
@@ -107,7 +107,7 @@ def build_reference(cfg):
     students, enrollments = [], []
     for sid, route_id in enumerate(assign, start=1):
         eff = date(2024, 9, 1) + timedelta(days=rng.randint(0, 364))
-        ts = datetime.combine(eff, time(8, 0), tzinfo=timezone.utc)
+        ts = datetime.combine(eff, time(8, 0), tzinfo=UTC)
         students.append({
             "student_id": sid, "full_name": f"{rng.choice(FIRST)} {rng.choice(LAST)}",
             "grade_level": rng.randint(1, 12), "home_neighborhood": hoods[route_id - 1],
