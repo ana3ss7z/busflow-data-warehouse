@@ -1,7 +1,7 @@
 -include .env
 export
 
-PY ?= .venv/bin/python
+PY ?= ../.venv/bin/python
 
 .PHONY: up down seed simulate load test rebuild perf
 
