@@ -1,7 +1,7 @@
 # OLTP schema (`oltp`)
 
 Solid lines are foreign keys. Dotted lines are logical links without a database FK (raw ingestion tables).
-
+well explained 
 ```mermaid
 erDiagram
     students {
