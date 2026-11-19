@@ -12,3 +12,15 @@ bus_capacity:
   min: 45
   max: 55
   total_min: 330
+
+simulation:
+  morning: {start: "07:10", arrival: "08:00"}
+  afternoon: {start: "17:30", arrival: "18:20"}
+  delay: {mean: 2.0, sd: 3.0, min: -5.0, max: 30.0}
+  bad_weather_rate: 0.10
+  bad_weather_extra_mean: 4.0
+  post_holiday_extra_mean: 2.0
+  no_show_rate: 0.04
+  friday_no_show_factor: 1.5
+  ping_interval_s: 20
+  stop_dwell_s: 30

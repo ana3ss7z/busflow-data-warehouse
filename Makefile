@@ -18,5 +18,8 @@ seed:
 test:
 	$(PY) -m pytest -q
 
-simulate load rebuild perf:
+simulate:
+	$(PY) src/simulate.py $(if $(START),--start $(START)) $(if $(END),--end $(END))
+
+rebuild perf load:
 	@echo "$@: not implemented yet"
