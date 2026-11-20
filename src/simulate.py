@@ -24,7 +24,6 @@ from psycopg.rows import dict_row
 
 from generate_reference import ROOT, SCHOOL, checksum, dsn_from_env, haversine_km
 
-
 TZ = ZoneInfo("Africa/Casablanca")
 
 TRIP_COLS = [

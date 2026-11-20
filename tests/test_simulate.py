@@ -10,7 +10,6 @@ import yaml
 from generate_reference import ROOT, build_reference, checksum
 from simulate import load_calendar, previous_weekday, simulate
 
-
 CFG = yaml.safe_load(
     (ROOT / "config.yml").read_text()
 )
