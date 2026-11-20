@@ -1,0 +1,43 @@
+# Source-system changes injected by the simulator (spec section 7.3).
+# `date` is the day the change is ENTERED in the source system (updated_at).
+scenarios:
+  - id: S02          # student moves to a new neighborhood, effective that day
+    kind: student_move
+    date: 2025-10-14
+    student_id: 17
+    to_route: 7
+    to_stop_sequence: 4
+
+  - id: S03          # back-dated address correction: effective 1 Oct, entered 20 Oct
+    kind: back_dated_correction
+    date: 2025-10-20
+    effective_from: 2025-10-01
+    student_id: 42
+    new_neighborhood: Ismailia
+
+  - id: S04          # same day: neighborhood changes (SCD2) and grade is corrected (SCD1)
+    kind: student_move
+    date: 2025-10-28
+    student_id: 77
+    to_route: 1
+    to_stop_sequence: 5
+    new_grade: 10
+
+  - id: S05a         # stop renamed (SCD1)
+    kind: stop_rename
+    date: 2025-11-03
+    stop_id: 12
+    new_name: "Hamria - Marche Central"
+
+  - id: S05b         # another stop relocated (SCD2)
+    kind: stop_relocate
+    date: 2025-11-17
+    stop_id: 30
+    north_m: 180
+    east_m: -120
+
+  - id: S12          # seat capacity changed after a refit
+    kind: bus_capacity
+    date: 2025-12-18
+    bus_id: 4
+    new_capacity: 45
