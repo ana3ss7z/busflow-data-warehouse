@@ -47,7 +47,7 @@ def test_baseline_without_scenarios_is_stable(base):
 
 
 def test_scenario_dates_exist_in_the_calendar(cal):
-    assert all(sc["date"] in cal for sc in SCENARIOS)
+    assert all(sc["date"] in cal for sc in SCENARIOS if "date" in sc)
 
 
 def test_s02_student_moves_and_later_events_follow(ref, full):
@@ -150,16 +150,34 @@ def test_no_route_exceeds_its_bus_capacity(full):
         assert n <= state["buses"][route_id]["seat_capacity"]
 
 
+def event_key(e):
+    """An event without its arrival time: duplicates (S06) share the same key."""
+    return (e["trip_id"], e["student_id"], e["stop_id"], e["event_type"],
+            e["scheduled_ts"], e["actual_ts"])
+
+
 def test_scenarios_only_touch_what_they_should(base, full):
     data, _ = full
-    assert data["trips"] == base["trips"]  # a student or stop change never moves a trip
-    affected = {1, 3, 4, 7}  # routes involved in S02, S04 and S05b
+    # trips: only the S07 and S08 trips change, plus odometers after the S08 cancellation
+    targeted = {2025110531, 2025111251}
+    new = {t["trip_id"]: t for t in data["trips"]}
+    assert len(new) == len(base["trips"])
+
+    def no_odometer(t):
+        return {k: v for k, v in t.items() if not k.startswith("odometer")}
+
+    for t in base["trips"]:
+        if t["trip_id"] not in targeted:
+            assert no_odometer(new[t["trip_id"]]) == no_odometer(t)
+    # events: routes involved in S02, S04, S05b, S07, S08 and S10-S11 aside, same events
+    # (duplicates added by S06 are ignored here)
+    affected = {1, 3, 4, 5, 7}
     route_of = {t["trip_id"]: t["route_id"] for t in base["trips"]}
-    untouched = [e for e in data["stop_events"] if route_of[e["trip_id"]] not in affected]
-    expected = [e for e in base["stop_events"] if route_of[e["trip_id"]] not in affected]
-    assert untouched == expected
-    other_pings = [p for p in data["gps_pings"] if route_of[p["trip_id"]] != 4]
-    assert other_pings == [p for p in base["gps_pings"] if route_of[p["trip_id"]] != 4]
+    assert {event_key(e) for e in data["stop_events"] if route_of[e["trip_id"]] not in affected} \
+        == {event_key(e) for e in base["stop_events"] if route_of[e["trip_id"]] not in affected}
+    # GPS: only route 4 (relocated stop) and the cancelled route 5 trip differ
+    other = [p for p in data["gps_pings"] if route_of[p["trip_id"]] not in {4, 5}]
+    assert other == [p for p in base["gps_pings"] if route_of[p["trip_id"]] not in {4, 5}]
 
 
 def test_a_scenario_that_changes_nothing_is_rejected(ref):

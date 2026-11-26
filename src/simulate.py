@@ -22,7 +22,13 @@ from generate_reference import (
     dsn_from_env,
     haversine_km,
 )
-from scenarios import apply_day, initial_state, load_scenarios
+from scenarios import (
+    adjust_trip,
+    apply_day,
+    cancelled_legs,
+    initial_state,
+    load_scenarios,
+)
 from timeutil import to_utc
 
 TRIP_COLS = [
@@ -66,7 +72,7 @@ def trunc_normal(rng, mean, sd, lo, hi):
             return x
 
 
-def build_context(ref, cal, seed):
+def build_context(ref, cal, seed, scenarios=()):
     """Everything that does not change over time."""
     school_days = sorted(d for d, ok in cal.items() if ok)
 
@@ -83,6 +89,7 @@ def build_context(ref, cal, seed):
         "driver_of_route": dict(zip(route_ids, driver_ids, strict=False)),
         "routes": {r["route_id"]: r for r in ref["routes"]},
         "school_index": {d: i for i, d in enumerate(school_days)},
+        "cancelled_legs": cancelled_legs(scenarios, {d: i for i, d in enumerate(school_days)}),
         # starting odometer per route (one bus per route, an agreed project assumption)
         "odo_base": {
             r["route_id"]: random.Random(f"{seed}:odo:{r['route_id']}").randint(20000, 150000)
@@ -125,7 +132,10 @@ def simulate_trip(rng, gps_rng, day, ctx, stops, route_id, direction, mean, nosh
 
     # odometer: continuous over the whole simulation (2 legs per school day)
     dist = route["planned_distance_km"]
-    legs = ctx["school_index"][day] * 2 + (0 if to_school else 1)
+    # legs = ctx["school_index"][day] * 2 + (0 if to_school else 1)
+    leg_no = ctx["school_index"][day] * 2 + (0 if to_school else 1)
+    # a cancelled trip drives no kilometres, so it does not advance the odometer
+    legs = leg_no - sum(1 for n in ctx["cancelled_legs"].get(route_id, ()) if n < leg_no)
     base = ctx["odo_base"][route_id]
     trip_id = int(day.strftime("%Y%m%d")) * 100 + route_id * 10 + (1 if to_school else 2)
     trip = {
@@ -191,7 +201,7 @@ def simulate_trip(rng, gps_rng, day, ctx, stops, route_id, direction, mean, nosh
 
 
 # ---------------------------------------------------------------- one day
-def simulate_day(day, ctx, state, cfg):
+def simulate_day(day, ctx, state, cfg, scenarios, end):
     sim = cfg["simulation"]
     rng = random.Random(f"{cfg['seed']}:{day.isoformat()}")
     bad_weather = rng.random() < sim["bad_weather_rate"]
@@ -220,6 +230,7 @@ def simulate_day(day, ctx, state, cfg):
             t, e, p = simulate_trip(random.Random(key), random.Random(key + ":gps"), day, ctx,
                                     stops_by_route[route_id], route_id, direction, mean,
                                     noshow_p, riders, sim)
+            t, e, p = adjust_trip(t, e, p, scenarios, key, end)
             trips.append(t)
             events.extend(e)
             pings.extend(p)
@@ -229,7 +240,7 @@ def simulate_day(day, ctx, state, cfg):
 def run(ref, cal, cfg, start, end, scenarios=None):
     """Simulate [start, end]; return (rows per table, source state at the end of `end`)."""
     scenarios = scenarios or []
-    ctx = build_context(ref, cal, cfg["seed"])
+    ctx = build_context(ref, cal, cfg["seed"], scenarios)
     state = initial_state(ref)
     out = {"trips": [], "stop_events": [], "gps_pings": []}
     for day in (start, end):
@@ -240,7 +251,7 @@ def run(ref, cal, cfg, start, end, scenarios=None):
             break
         apply_day(state, day, scenarios)
         if day >= start and cal[day]:
-            trips, events, pings = simulate_day(day, ctx, state, cfg)
+            trips, events, pings = simulate_day(day, ctx, state, cfg, scenarios, end)
             out["trips"].extend(trips)
             out["stop_events"].extend(events)
             out["gps_pings"].extend(pings)
@@ -260,7 +271,12 @@ def check_seeded(conn, ref):
             if cur.fetchone()[0] != len(ref[table]):
                 raise RuntimeError(f"oltp.{table} does not match the seed: run `make seed` first")
 
-
+def pending_trip_date(conn):
+    """Earliest service date that still has a trip IN_PROGRESS (None if there is none)."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT min(service_date) FROM oltp.trips WHERE status = 'IN_PROGRESS'")
+        return cur.fetchone()[0]
+    
 def sync_state(conn, state):
     """Bring the mutable source tables to the state at the end of the simulated range."""
     with conn.cursor() as cur:
@@ -315,8 +331,14 @@ def main():
     ref = build_reference(cfg)
 
     data, state = run(ref, cal, cfg, start, end, scenarios)
+    ref = build_reference(cfg)
+
     with psycopg.connect(dsn_from_env()) as conn:
         check_seeded(conn, ref)
+        pending = pending_trip_date(conn)
+        if pending is not None and pending < start:
+            start = pending  # complete the trips an earlier run left IN_PROGRESS
+        data, state = run(ref, cal, cfg, start, end, scenarios)
         write(conn, data, start, end)
         sync_state(conn, state)
 
