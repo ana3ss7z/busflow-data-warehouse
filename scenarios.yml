@@ -41,3 +41,44 @@ scenarios:
     date: 2025-12-18
     bus_id: 4
     new_capacity: 45
+
+
+    
+  # ---- trip and event anomalies (PR 2b) ----
+  - id: S06          # app retries: about 1 percent of events are sent twice (continuous)
+    kind: duplicate_events
+    rate: 0.01
+
+  - id: S07          # trip with no driver recorded
+    kind: no_driver
+    date: 2025-11-05
+    route_id: 3
+    direction: TO_SCHOOL
+
+  - id: S08          # trip cancelled for breakdown
+    kind: cancel_trip
+    date: 2025-11-12
+    route_id: 5
+    direction: TO_SCHOOL
+    reason: BREAKDOWN
+
+  - id: S09          # trip still in progress at load time (07:35), completed by the next run
+    kind: in_progress
+    date: 2025-12-02
+    route_id: 2
+    direction: TO_SCHOOL
+    cutoff: "07:35"
+
+  - id: S10          # stop event for a student that does not exist (9 Dec is in a school break)
+    kind: orphan_event
+    date: 2025-12-17
+    route_id: 4
+    direction: FROM_SCHOOL
+    student_id: 99999
+
+  - id: S11          # event received 3 days after the trip
+    kind: late_event
+    date: 2025-12-16
+    route_id: 1
+    direction: TO_SCHOOL
+    delay_days: 3
