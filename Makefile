@@ -3,7 +3,7 @@ export
 
 PY ?= ../.venv/bin/python
 
-.PHONY: up down seed simulate load test rebuild perf
+.PHONY: up down seed simulate static load test rebuild perf
 
 up:
 	docker compose up -d
@@ -20,6 +20,9 @@ test:
 
 simulate:
 	$(PY) src/simulate.py $(if $(START),--start $(START)) $(if $(END),--end $(END))
+
+static:
+	$(PY) src/static_dims.py
 
 rebuild perf load:
 	@echo "$@: not implemented yet"
